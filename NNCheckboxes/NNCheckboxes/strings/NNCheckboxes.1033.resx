@@ -59,7 +59,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="NNCheckboxes_Display_Key" xml:space="preserve">
-    <value>Checkbox list</value>
+    <value>Checkbox list control</value>
   </data>
   <data name="NNCheckboxes_Desc_Key" xml:space="preserve">
     <value>This control renders a list of records from a referential entity as checkboxes. Associated records are checked.</value>
@@ -130,8 +130,20 @@
   <data name="No_Relationship_Found" xml:space="preserve">
     <value>No many-to-many relationship has been found for these entities</value>
   </data>
+  <data name="View_Not_Found" xml:space="preserve">
+    <value>Specified View Not Found. Check your control parameters.</value>
+  </data>
+  <data name="Record_Not_Found" xml:space="preserve">
+    <value>Record cannot be found!</value>
+  </data>
   <data name="Multiple_Relationships_Found" xml:space="preserve">
     <value>Mutliple many-to-many relationships have been found for these entities. Please define the relationship in this control configuration</value>
+  </data>
+  <data name="Invalid_Parameter" xml:space="preserve">
+    <value>Invalid Parameter. Please check Checkboxes control configuration</value>
+  </data>
+  <data name="Error_Request" xml:space="preserve">
+    <value>An error occured when executing request. Please check NNCheckboxes control configuration.</value>
   </data>
   <data name="No_Category" xml:space="preserve">
     <value>Uncategorized records</value>

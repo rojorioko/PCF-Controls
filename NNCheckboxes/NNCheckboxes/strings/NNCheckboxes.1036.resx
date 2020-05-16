@@ -59,7 +59,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="NNCheckboxes_Display_Key" xml:space="preserve">
-    <value>Liste de case à cocher</value>
+    <value>Contrôle de la liste des cases à cocher</value>
   </data>
   <data name="NNCheckboxes_Desc_Key" xml:space="preserve">
     <value>Ce contrôle affiche les enregistrements d'une entité référentielle en tant que liste de case à cocher. Les enregistrements liés sont cochés.</value>
@@ -132,6 +132,9 @@
   </data>
   <data name="Multiple_Relationships_Found" xml:space="preserve">
     <value>Plusieurs relations plusieurs à plusieurs ont été trouvé pour ces entités. Veuillez spécifier le nom de schéma de la relation à utiliser dans la configuration de ce contrôle</value>
+  </data>
+  <data name="Invalid_Parameter" xml:space="preserve">
+    <value>Invalid Parameter. Please check Checkboxes control configuration</value>
   </data>
   <data name="No_Category" xml:space="preserve">
     <value>Enregistrements non catégorisés</value>

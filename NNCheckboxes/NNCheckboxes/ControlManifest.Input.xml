@@ -1,18 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest>
-  <control namespace="MscrmTools" constructor="NNCheckboxes" version="1.0.19" display-name-key="NNCheckboxes_Display_Key" description-key="NNCheckboxes_Desc_Key" control-type="standard" preview-image="imgs/nncheckboxes.png">
+  <control namespace="MscrmTools" constructor="ListCheckboxes" version="1.0.19" display-name-key="NNCheckboxes_Display_Key" description-key="NNCheckboxes_Desc_Key" control-type="standard" preview-image="imgs/nncheckboxes.png">
     <data-set name="nnRelationshipDataSet" display-name-key="nnRelationshipDataSet_Display_Key">
-      <property-set name="displayAttribute" display-name-key="targetEntity_Display_Key" description-key="targetEntity_Desc_Key" of-type="SingleLine.Text" usage="bound" required="true" />
+      <property-set name="displayAttribute" display-name-key="targetEntity_Display_Key" description-key="targetEntity_Desc_Key" of-type="SingleLine.Text" usage="bound" required="false" />
       <property-set name="backgroundColorAttribute" display-name-key="backgroundColorAttribute_Display_Key" description-key="backgroundColorAttribute_Desc_Key" of-type-group="colorTypes" usage="bound" required="false" />
       <property-set name="foreColorAttribute" display-name-key="foreColorAttribute_Display_Key" description-key="foreColorAttribute_Desc_Key" of-type-group="colorTypes" usage="bound" required="false" />
       <property-set name="categoryAttribute" display-name-key="categoryAttribute_Display_Key" description-key="categoryAttribute_Desc_Key" of-type-group="categoryTypes" usage="bound" required="false" />
     </data-set>
+    <property name="useCustomIntersect" display-name-key="Use Intersect" description-key="Use Intersect" of-type="Enum" usage="input" required="false">
+      <value name="True" display-name-key="Yes" description-key="Use custom">True</value>
+      <value name="False" display-name-key="No" description-key="Do not use custom" default="true">False</value>
+    </property>
+    <property name="customIntersectChildRelationship" display-name-key="customIntersectChildRelationship" description-key="customIntersectChildRelationship" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="customIntersectChildDisplayAttibute" display-name-key="customIntersectChildDisplayAttibute" description-key="customIntersectChildDisplayAttibute" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="customIntersectChildView" display-name-key="customIntersectChildView" description-key="customIntersectChildView" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="relationshipSchemaName" display-name-key="relationshipSchemaName_Display_Key" description-key="relationshipSchemaName_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="columnsNumber" display-name-key="columnsNumber_Display_Key" description-key="columnsNumber_Desc_Key" of-type="Whole.None" usage="input" required="true" default-value="2" />
     <property name="useToggleSwitch" display-name-key="useToggleSwitch_Display_Key" description-key="useToggleSwitch_Desc_Key" of-type="Enum" usage="input" required="true">
       <value name="True" display-name-key="useToggleSwitchTrue" description-key="useToggleSwitchTrue_Desc">True</value>
       <value name="False" display-name-key="useToggleSwitchFalse" description-key="useToggleSwitchFalse_Desc" default="true">False</value>
-    </property>
+    </property>    
     <property name="toggleDefaultBackgroundColorOff" display-name-key="toggleDefaultBackgroundColorOff_Display_Key" description-key="toggleDefaultBackgroundColorOff_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" default-value="#CC0000" />
     <property name="toggleDefaultBackgroundColorOn" display-name-key="toggleDefaultBackgroundColorOn_Display_Key" description-key="toggleDefaultBackgroundColorOn_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" default-value="#008800" />
     <type-group name="categoryTypes">
