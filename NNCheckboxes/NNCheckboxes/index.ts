@@ -737,10 +737,23 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let isInputValid: boolean = true;
 
 		if (this._useCustomRelationship) {
-			isInputValid = this._context.parameters.customIntersectChildDisplayAttibute.raw
+			isInputValid = this._context.parameters.customIntersectChildDisplayAttibute
+				&& this._context.parameters.customIntersectChildDisplayAttibute.raw
+				&& this._context.parameters.customIntersectChildRelationship
 				&& this._context.parameters.customIntersectChildRelationship.raw
-				&& (this._context.parameters.customIntersectChildFetchXML.raw || this._context.parameters.customIntersectChildView.raw)
+				&& (
+					(
+						this._context.parameters.customIntersectChildFetchXML
+						&& this._context.parameters.customIntersectChildFetchXML.raw
+					)
+					||
+					(
+						this._context.parameters.customIntersectChildView
+						&& this._context.parameters.customIntersectChildView.raw
+					)
+				)
 				&& this._context.parameters.relationshipSchemaName
+				&& this._context.parameters.relationshipSchemaName.raw
 				? true : false;
 		}
 		else {
