@@ -79,6 +79,12 @@
   <data name="relationshipSchemaName_Desc_Key" xml:space="preserve">
     <value>Schema name of the relationship displayed (case is important). Only required if multiple many-to-many relationships exist for both entities</value>
   </data>
+  <data name="customIntersectChildFetchXML_Display_Key" xml:space="preserve">
+    <value>FetchXML</value>
+  </data>
+  <data name="customIntersectChildFetchXML_Desc_Key" xml:space="preserve">
+    <value>FetchXML value to be used on API Call</value>
+  </data>
   <data name="parentEntityLogicalName_Display_Key" xml:space="preserve">
     <value>Parent entity</value>
   </data>

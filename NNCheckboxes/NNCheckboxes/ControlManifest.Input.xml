@@ -14,6 +14,7 @@
     <property name="customIntersectChildRelationship" display-name-key="customIntersectChildRelationship" description-key="customIntersectChildRelationship" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="customIntersectChildDisplayAttibute" display-name-key="customIntersectChildDisplayAttibute" description-key="customIntersectChildDisplayAttibute" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="customIntersectChildView" display-name-key="customIntersectChildView" description-key="customIntersectChildView" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="customIntersectChildFetchXML" display-name-key="customIntersectChildFetchXML_Display_Key" description-key="customIntersectChildFetchXML_Desc_Key" of-type="Multiple" usage="input" required="false" />
     <property name="relationshipSchemaName" display-name-key="relationshipSchemaName_Display_Key" description-key="relationshipSchemaName_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="columnsNumber" display-name-key="columnsNumber_Display_Key" description-key="columnsNumber_Desc_Key" of-type="Whole.None" usage="input" required="true" default-value="2" />
     <property name="useToggleSwitch" display-name-key="useToggleSwitch_Display_Key" description-key="useToggleSwitch_Desc_Key" of-type="Enum" usage="input" required="true">

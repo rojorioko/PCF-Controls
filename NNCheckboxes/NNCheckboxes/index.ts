@@ -209,9 +209,17 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let saveQuery: ComponentFramework.WebApi.Entity | null;
 
 		if (this._useCustomRelationship) {
-			let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectChildView.raw}'`;
-			let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await this._context.webAPI.retrieveMultipleRecords(Constant.SaveQuery, queryOption);
-			saveQuery = result.entities && result.entities.length > 0 ? result.entities[0] : null;
+			if (this._context.parameters.customIntersectChildFetchXML.raw) {
+				saveQuery = {
+					"returnedtypecode": this._customRelationshipDefinitionChild.ReferencedEntity,
+					"fetchxml": this._context.parameters.customIntersectChildFetchXML.raw
+				};
+			}
+			else {
+				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectChildView.raw}'`;
+				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await this._context.webAPI.retrieveMultipleRecords(Constant.SaveQuery, queryOption);
+				saveQuery = result.entities && result.entities.length > 0 ? result.entities[0] : null;
+			}
 		} else {
 			saveQuery = await this._context.webAPI.retrieveRecord(Constant.SaveQuery, this._context.parameters.nnRelationshipDataSet.getViewId(), "?$select=fetchxml,returnedtypecode");
 		}
@@ -731,7 +739,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		if (this._useCustomRelationship) {
 			isInputValid = this._context.parameters.customIntersectChildDisplayAttibute.raw
 				&& this._context.parameters.customIntersectChildRelationship.raw
-				&& this._context.parameters.customIntersectChildView.raw
+				&& (this._context.parameters.customIntersectChildFetchXML.raw || this._context.parameters.customIntersectChildView.raw)
 				&& this._context.parameters.relationshipSchemaName
 				? true : false;
 		}
