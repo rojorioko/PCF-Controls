@@ -79,10 +79,34 @@
   <data name="relationshipSchemaName_Desc_Key" xml:space="preserve">
     <value>Schema name of the relationship displayed (case is important). Only required if multiple many-to-many relationships exist for both entities</value>
   </data>
-  <data name="customIntersectChildFetchXML_Display_Key" xml:space="preserve">
+   <data name="useCustomIntersect_Display_Key" xml:space="preserve">
+    <value>Use Intersect Entity</value>
+  </data>
+  <data name="useCustomIntersect_Desc_Key" xml:space="preserve">
+    <value>Select true if your Many to Many relationship came from an Intersect Entity</value>
+  </data>
+  <data name="customIntersectDisplayEntityRelationship_Display_Key" xml:space="preserve">
+    <value>Relationship Schema Name</value>
+  </data>
+  <data name="customIntersectDisplayEntityRelationship_Desc_Key" xml:space="preserve">
+    <value>Relationship schema name of intersect entity and the display entity</value>
+  </data>
+   <data name="customIntersectDisplayEntityDisplayAttibute_Display_Key" xml:space="preserve">
+    <value>Attribute Name</value>
+  </data>
+  <data name="customIntersectDisplayEntityDisplayAttibute_Desc_Key" xml:space="preserve">
+    <value>Field to display on the target form</value>
+  </data>
+  <data name="customIntersectDisplayEntityView_Display_Key" xml:space="preserve">
+    <value>View Name</value>
+  </data>
+  <data name="customIntersectDisplayEntityView_Desc_Key" xml:space="preserve">
+    <value>Name of the view to be used on displaying related entity</value>
+  </data>
+  <data name="customIntersectDisplayEntityFetchXML_Display_Key" xml:space="preserve">
     <value>FetchXML</value>
   </data>
-  <data name="customIntersectChildFetchXML_Desc_Key" xml:space="preserve">
+  <data name="customIntersectDisplayEntityFetchXML_Desc_Key" xml:space="preserve">
     <value>FetchXML value to be used on API Call</value>
   </data>
   <data name="parentEntityLogicalName_Display_Key" xml:space="preserve">
@@ -146,10 +170,16 @@
     <value>Mutliple many-to-many relationships have been found for these entities. Please define the relationship in this control configuration</value>
   </data>
   <data name="Invalid_Parameter" xml:space="preserve">
-    <value>Invalid Parameter. Please check Checkboxes control configuration</value>
+    <value>Invalid Parameter. Please check control configuration</value>
   </data>
   <data name="Error_Request" xml:space="preserve">
-    <value>An error occured when executing request. Please check NNCheckboxes control configuration.</value>
+    <value>An error occured when executing request. Please check control configuration.</value>
+  </data>
+  <data name="Error_Disassociate" xml:space="preserve">
+    <value>An error occured when executing disassociate request. Please check control configuration.</value>
+  </data>
+  <data name="Error_Associate" xml:space="preserve">
+    <value>An error occured when executing associate request. Please check control configuration.</value>
   </data>
   <data name="No_Category" xml:space="preserve">
     <value>Uncategorized records</value>

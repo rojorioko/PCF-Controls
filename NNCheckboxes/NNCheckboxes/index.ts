@@ -1,13 +1,9 @@
 import { IDataSetRecord } from './ts/interface/datasetrecord.interface';
 import { Constant } from './ts/constant/constant';
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-// import DataSetInterfaces = ComponentFramework.PropertyHelper.DataSetApi;
-// import { SpawnSyncOptionsWithBufferEncoding } from "child_process";
-// import { stringify } from 'querystring';
 import { IAttributeValue } from './ts/interface/attributevalue.interface';
 import { IRelationDefinition } from './ts/interface/relationdefinition.interface';
 import { INNRelationshipInfo } from './ts/interface/nnrelationshipinfo.interface';
-type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 export class ListCheckboxes implements ComponentFramework.StandardControl<IInputs, IOutputs> {
 
@@ -17,7 +13,6 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	private _divFlexBox: HTMLDivElement;
 	// Reference to ComponentFramework Context object
 	private _context: ComponentFramework.Context<IInputs>;
-	// Event Handler 'refreshData' reference
 	private _parentRecordId: string;
 	private _parentRecordType: string;
 	private _childRecordType: string;
@@ -36,6 +31,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	private _customRelationshipDefinitionChild: IRelationDefinition;
 	private _customRelationshipDefinitionCurrent: IRelationDefinition;
 	private _changedCheckboxes: HTMLInputElement[] = [];
+	private _customIntersectDisplayEntityFetchXML: string;
+	private _hasValidDataSource: boolean;
 
 	/**
 	 * Empty constructor.
@@ -55,35 +52,38 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	public async init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement) {
 		// Add control initialization code
 		this._context = context;
-		this._useCustomRelationship = (context.parameters.useCustomIntersect && context.parameters.useCustomIntersect.raw.toLowerCase() === 'true') ? true : false;
-
-		if (!this._parametersAreValid()) return;
-
-		if (this._useCustomRelationship) {
-			this._customRelationshipDefinitionChild = await this._getRelationshipDefinitionByName(this._context.parameters.customIntersectChildRelationship.raw);
-			this._customRelationshipDefinitionCurrent = await this._getRelationshipDefinitionByName(this._context.parameters.relationshipSchemaName.raw);
-		}
-
 		this._container = document.createElement("div");
 		this._container.setAttribute("class", Constant.NncbMain);
 		container.appendChild(this._container);
+		this._useCustomRelationship = (context.parameters.useCustomIntersect && context.parameters.useCustomIntersect.raw.toLowerCase() === 'true') ? true : false;
 
-		this._setToggleDefaultBackgroud();
-		this._extractDataSetParameters();
-
-		// If no category grouping, then only one flexbox is needed
-		if (!this._categoryAttributeName) {
-			this._divFlexBox = document.createElement("div");
-			this._divFlexBox.setAttribute("class", Constant.NncbFlex);
-			this._container.appendChild(this._divFlexBox);
+		if (this._parametersAreNotValid()) {
+			this._showAlertMessage(this._context.resources.getString(Constant.InvalidParameters));
+			return;
 		}
 
 		try {
-			let saveQuery: ComponentFramework.WebApi.Entity = await this._getViewFetchXML();
+			this._setToggleDefaultBackgroud();
+			this._extractDataSetParameters();
 
-			if (!this._useCustomRelationship)
+			if (this._useCustomRelationship) {
+				this._customRelationshipDefinitionChild = await this._getRelationshipDefinitionByName(this._context.parameters.customIntersectDisplayEntityRelationship.raw);
+				this._customRelationshipDefinitionCurrent = await this._getRelationshipDefinitionByName(this._context.parameters.relationshipSchemaName.raw);
+			}
+			else {
 				await this._setRelationshipInformation();
+			}
 
+			// If no category grouping, then only one flexbox is needed
+			if (!this._categoryAttributeName || this._useCustomRelationship)
+				this._createMainContainer();
+
+			if (this._useCustomRelationship && !this._hasValidDataSource) {
+				this._showAlertMessage(this._context.resources.getString(Constant.InvalidParameters));
+				return;
+			}
+
+			let saveQuery: ComponentFramework.WebApi.Entity = await this._getViewFetchXML();
 			let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await context.webAPI.retrieveMultipleRecords(saveQuery.returnedtypecode, "?fetchXml=" + encodeURIComponent(saveQuery.fetchxml));
 
 			if (this._useCustomRelationship)
@@ -92,7 +92,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				this._displayViewRecordsDefault(result);
 		}
 		catch (error) {
-			this._showAlertMessage("Checkboxes Control " + error);
+			this._showAlertMessage(error.message);
 			return;
 		}
 	}
@@ -101,14 +101,38 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	 * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
 	 * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
 	 */
-	public updateView(context: ComponentFramework.Context<IInputs>): void {
-		if (!context.updatedProperties.includes(Constant.DatasetName)) return;
+	public async updateView(context: ComponentFramework.Context<IInputs>) {
+		if (!context.updatedProperties.includes(Constant.DatasetName) && !context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML))
+			return;
 
 		if (context.parameters.nnRelationshipDataSet.paging.hasNextPage) {
 			context.parameters.nnRelationshipDataSet.paging.loadNextPage();
 			return;
 		}
 
+		//Check if fetchXML has changed, then reset the display data
+		if (this._useCustomRelationship && context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)) {
+			if (context.parameters.customIntersectDisplayEntityFetchXML.raw === this._customIntersectDisplayEntityFetchXML) return;
+
+			this._customIntersectDisplayEntityFetchXML = context.parameters.customIntersectDisplayEntityFetchXML.raw
+
+			try {
+				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await context.webAPI.retrieveMultipleRecords(
+					this._customRelationshipDefinitionChild.ReferencedEntity,
+					"?fetchXml=" + encodeURIComponent(this._customIntersectDisplayEntityFetchXML)
+				);
+
+				// reset the control display								
+				this._divFlexBox.innerHTML = "";
+
+				this._displayViewRecordsCustom(result);
+
+			} catch (error) {
+				this._showAlertMessage(error.message);
+			}
+		}
+
+		// Enable checkbox after reset.
 		if (this._changedCheckboxes.length) {
 			this._changedCheckboxes.forEach(chx => {
 				chx.disabled = false;
@@ -119,6 +143,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 		let dataSet = context.parameters.nnRelationshipDataSet;
 
+		// Check all records that are already associated to current record
 		for (var j = 0; j < dataSet.sortedRecordIds.length; j++) {
 			let matchId: string | null = dataSet.sortedRecordIds[j];
 			if (this._useCustomRelationship) {
@@ -173,6 +198,12 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	}
 
 	//#region Private Functions
+	private _createMainContainer() {
+		this._divFlexBox = document.createElement("div");
+		this._divFlexBox.setAttribute("class", Constant.NncbFlex);
+		this._container.appendChild(this._divFlexBox);
+	}
+
 	private async _getRelationshipDefinitionByName(schemaName: string): Promise<any> {
 		//@ts-ignore
 		let requestUrl = `${this._context.page.getClientUrl()}/api/data/v9.1/RelationshipDefinitions(SchemaName='${schemaName}')`;
@@ -209,14 +240,14 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let saveQuery: ComponentFramework.WebApi.Entity | null;
 
 		if (this._useCustomRelationship) {
-			if (this._context.parameters.customIntersectChildFetchXML.raw) {
+			if (this._context.parameters.customIntersectDisplayEntityFetchXML.raw) {
 				saveQuery = {
 					"returnedtypecode": this._customRelationshipDefinitionChild.ReferencedEntity,
-					"fetchxml": this._context.parameters.customIntersectChildFetchXML.raw
+					"fetchxml": this._context.parameters.customIntersectDisplayEntityFetchXML.raw
 				};
 			}
 			else {
-				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectChildView.raw}'`;
+				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectDisplayEntityView.raw}'`;
 				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await this._context.webAPI.retrieveMultipleRecords(Constant.SaveQuery, queryOption);
 				saveQuery = result.entities && result.entities.length > 0 ? result.entities[0] : null;
 			}
@@ -224,7 +255,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			saveQuery = await this._context.webAPI.retrieveRecord(Constant.SaveQuery, this._context.parameters.nnRelationshipDataSet.getViewId(), "?$select=fetchxml,returnedtypecode");
 		}
 
-		if (saveQuery != null && saveQuery.fetchxml) {
+		if (saveQuery !== null && saveQuery.fetchxml) {
+			this._customIntersectDisplayEntityFetchXML = saveQuery.fetchxml;
 			return Promise.resolve(saveQuery);
 		}
 		else {
@@ -244,7 +276,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			if (this._categoryAttributeName) {
 				// We need to display new category only if the category 
 				// is different from the previous one
-				if (category != record[this._categoryAttributeName]) {
+				if (category !== record[this._categoryAttributeName]) {
 					category = record[this._categoryAttributeName];
 
 					let label = record[this._categoryAttributeName + (this._categoryUseDisplayName ? "@OData.Community.Display.V1.FormattedValue" : "")];
@@ -351,13 +383,11 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	}
 
 	private _displayViewRecordsCustom(result: ComponentFramework.WebApi.RetrieveMultipleResponse) {
-		let divFlexCtrl = document.createElement("div");
-
 		for (var i = 0; i < result.entities.length; i++) {
 			let record = result.entities[i];
 
-			// Add flex content
-			divFlexCtrl = document.createElement("div");
+			// Add flex content	
+			let divFlexCtrl = document.createElement("div");
 			divFlexCtrl.setAttribute("style", "flex: 0 " + (100 / this._numberOfColumns) + "% !important");
 			this._divFlexBox.appendChild(divFlexCtrl);
 
@@ -463,21 +493,17 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				}
 			}();
 
-			// @ts-ignore
 			thisCtrl._context.webAPI.execute(associateRequest)
 				.then(
-					// @ts-ignore
-					function (result) {
-						console.log("NNCheckboxes: records were successfully associated")
-					},
-					// @ts-ignore
-					function (error) {
-						thisCtrl._context.navigation.openAlertDialog({ text: "An error occured when associating records. Please check NNCheckboxes control configuration" });
+					null,
+					function () {
+						let message = thisCtrl._context.resources.getString("Error_Associate");
+						thisCtrl._showAlertMessage(message);
 					}
 				);
 		}
 		else {
-			var theRecordId = currentTarget.id;
+
 			var disassociateRequest = new class {
 				target = {
 					id: record1Id,
@@ -504,16 +530,12 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				}
 			}();
 
-			// @ts-ignore
 			thisCtrl._context.webAPI.execute(disassociateRequest)
 				.then(
-					// @ts-ignore
-					function (result) {
-						console.log("NNCheckboxes: records were successfully disassociated")
-					},
-					// @ts-ignore
-					function (error) {
-						thisCtrl._showAlertMessage(thisCtrl._context.resources.getString("Error_Disassociate"));
+					null,
+					function () {
+						let message = thisCtrl._context.resources.getString("Error_Disassociate");
+						thisCtrl._showAlertMessage(message);
 					}
 				);
 		}
@@ -554,7 +576,6 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		finally {
 			this._context.parameters.nnRelationshipDataSet.paging.reset();
 			this._context.parameters.nnRelationshipDataSet.refresh();
-			//currentTarget.disabled = false;
 		}
 	}
 
@@ -648,7 +669,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 	private async _setRelationshipInformation(): Promise<void> {
 		let schemaNameParameter = this._context.parameters.relationshipSchemaName;
-		if (schemaNameParameter != undefined && schemaNameParameter.raw != null) {
+		if (schemaNameParameter && schemaNameParameter.raw) {
 			let entityMetadata = await this._context.utils.getEntityMetadata(this._parentRecordType);
 			let nnRelationships = entityMetadata.ManyToManyRelationships.getAll();
 
@@ -697,17 +718,14 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 	private _setToggleDefaultBackgroud() {
 		if (this._context.parameters.toggleDefaultBackgroundColorOn && this._context.parameters.toggleDefaultBackgroundColorOn.raw) {
-			// @ts-ignore
 			let styleSheet: any = this._getStyleSheet();
-			if (styleSheet != null) {
-				// @ts-ignore
+
+			if (styleSheet) {
 				let rules = styleSheet.rules;
 				for (let i = 0; i < rules.length; i++) {
 					let rule = rules[i];
 					if (rule.selectorText === "input:checked + .nncb-slider") {
-						// @ts-ignore
 						styleSheet.deleteRule(i);
-						// @ts-ignore
 						styleSheet.insertRule("input:checked + .nncb-slider { background-color: " + this._context.parameters.toggleDefaultBackgroundColorOn.raw + ";}", rule.index)
 					}
 				}
@@ -715,17 +733,14 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		if (this._context.parameters.toggleDefaultBackgroundColorOff && this._context.parameters.toggleDefaultBackgroundColorOff.raw) {
-			// @ts-ignore
 			let styleSheet: any = this._getStyleSheet();
-			if (styleSheet != null) {
-				// @ts-ignore
+
+			if (styleSheet) {
 				let rules = styleSheet.rules;
 				for (let i = 0; i < rules.length; i++) {
 					let rule = rules[i];
 					if (rule.selectorText === ".nncb-slider") {
-						// @ts-ignore
 						styleSheet.deleteRule(i);
-						// @ts-ignore
 						styleSheet.insertRule(".nncb-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: " + this._context.parameters.toggleDefaultBackgroundColorOff.raw + "; -webkit-transition: .4s; transition: .4s;", rule.index)
 					}
 				}
@@ -733,25 +748,14 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 	}
 
-	private _parametersAreValid(): boolean {
+	private _parametersAreNotValid(): boolean {
 		let isInputValid: boolean = true;
 
 		if (this._useCustomRelationship) {
-			isInputValid = this._context.parameters.customIntersectChildDisplayAttibute
-				&& this._context.parameters.customIntersectChildDisplayAttibute.raw
-				&& this._context.parameters.customIntersectChildRelationship
-				&& this._context.parameters.customIntersectChildRelationship.raw
-				&& (
-					(
-						this._context.parameters.customIntersectChildFetchXML
-						&& this._context.parameters.customIntersectChildFetchXML.raw
-					)
-					||
-					(
-						this._context.parameters.customIntersectChildView
-						&& this._context.parameters.customIntersectChildView.raw
-					)
-				)
+			isInputValid = this._context.parameters.customIntersectDisplayEntityDisplayAttibute
+				&& this._context.parameters.customIntersectDisplayEntityDisplayAttibute.raw
+				&& this._context.parameters.customIntersectDisplayEntityRelationship
+				&& this._context.parameters.customIntersectDisplayEntityRelationship.raw
 				&& this._context.parameters.relationshipSchemaName
 				&& this._context.parameters.relationshipSchemaName.raw
 				? true : false;
@@ -761,11 +765,14 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			isInputValid = displayNameDataSetParam ? true : false;
 		}
 
-		if (!isInputValid) {
-			this._showAlertMessage(this._context.resources.getString(Constant.InvalidParameters));
-		}
+		this._hasValidDataSource = (
+			this._context.parameters.customIntersectDisplayEntityFetchXML
+			&& this._context.parameters.customIntersectDisplayEntityFetchXML.raw)
+			|| (this._context.parameters.customIntersectDisplayEntityView
+				&& this._context.parameters.customIntersectDisplayEntityView.raw)
+			? true : false;
 
-		return isInputValid;
+		return !isInputValid;
 	}
 
 	private _showAlertMessage(message: string): void {
