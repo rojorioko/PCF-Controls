@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest>
-  <control namespace="MscrmTools" constructor="ListCheckboxes" version="1.0.19" display-name-key="NNCheckboxes_Display_Key" description-key="NNCheckboxes_Desc_Key" control-type="standard" preview-image="imgs/nncheckboxes.png">
+  <control namespace="MscrmTools" constructor="ListCheckboxes" version="1.0.21" display-name-key="NNCheckboxes_Display_Key" description-key="NNCheckboxes_Desc_Key" control-type="standard" preview-image="imgs/nncheckboxes.png">
     <data-set name="nnRelationshipDataSet" display-name-key="nnRelationshipDataSet_Display_Key">
       <property-set name="displayAttribute" display-name-key="targetEntity_Display_Key" description-key="targetEntity_Desc_Key" of-type="SingleLine.Text" usage="bound" required="false" />
       <property-set name="backgroundColorAttribute" display-name-key="backgroundColorAttribute_Display_Key" description-key="backgroundColorAttribute_Desc_Key" of-type-group="colorTypes" usage="bound" required="false" />
@@ -15,13 +15,13 @@
     </property>    
     <property name="toggleDefaultBackgroundColorOff" display-name-key="toggleDefaultBackgroundColorOff_Display_Key" description-key="toggleDefaultBackgroundColorOff_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" default-value="#CC0000" />
     <property name="toggleDefaultBackgroundColorOn" display-name-key="toggleDefaultBackgroundColorOn_Display_Key" description-key="toggleDefaultBackgroundColorOn_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" default-value="#008800" />
+    <property name="fetchXmlData" display-name-key="customIntersectDisplayEntityFetchXML_Display_Key" description-key="customIntersectDisplayEntityFetchXML_Desc_Key" of-type="Multiple" usage="input" required="false" />
     <property name="useCustomIntersect" display-name-key="useCustomIntersect_Display_Key" description-key="useCustomIntersect_Desc_Key" of-type="Enum" usage="input" required="false">
       <value name="True" display-name-key="Yes" description-key="Use custom">True</value>
       <value name="False" display-name-key="No" description-key="Do not use custom" default="true">False</value>
     </property>
     <property name="customIntersectDisplayEntityRelationship" display-name-key="customIntersectDisplayEntityRelationship_Display_Key" description-key="customIntersectDisplayEntityRelationship_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />
-    <property name="customIntersectDisplayEntityDisplayAttibute" display-name-key="customIntersectDisplayEntityDisplayAttibute_Display_Key" description-key="customIntersectDisplayEntityDisplayAttibute_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />
-    <property name="customIntersectDisplayEntityFetchXML" display-name-key="customIntersectDisplayEntityFetchXML_Display_Key" description-key="customIntersectDisplayEntityFetchXML_Desc_Key" of-type="Multiple" usage="input" required="false" />
+    <property name="customIntersectDisplayEntityDisplayAttibute" display-name-key="customIntersectDisplayEntityDisplayAttibute_Display_Key" description-key="customIntersectDisplayEntityDisplayAttibute_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />    
     <property name="customIntersectDisplayEntityView" display-name-key="customIntersectDisplayEntityView_Display_Key" description-key="customIntersectDisplayEntityView_Desc_Key" of-type="SingleLine.Text" usage="input" required="false" />    
     <type-group name="categoryTypes">
       <type>SingleLine.Text</type>

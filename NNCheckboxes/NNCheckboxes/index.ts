@@ -30,9 +30,10 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	private _useCustomRelationship: boolean;
 	private _customRelationshipDefinitionChild: IRelationDefinition;
 	private _customRelationshipDefinitionCurrent: IRelationDefinition;
-	private _changedCheckboxes: HTMLInputElement[] = [];
-	private _customIntersectDisplayEntityFetchXML: string;
+	private _checkboxRecords: HTMLCollectionOf<Element> | null;
+	private _customIntersectDisplayEntityFetchXML: string | null;
 	private _hasValidDataSource: boolean;
+	private _elementPreFix: string;
 
 	/**
 	 * Empty constructor.
@@ -69,9 +70,11 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			if (this._useCustomRelationship) {
 				this._customRelationshipDefinitionChild = await this._getRelationshipDefinitionByName(this._context.parameters.customIntersectDisplayEntityRelationship.raw);
 				this._customRelationshipDefinitionCurrent = await this._getRelationshipDefinitionByName(this._context.parameters.relationshipSchemaName.raw);
+				this._elementPreFix = this._customRelationshipDefinitionCurrent.SchemaName;
 			}
 			else {
 				await this._setRelationshipInformation();
+				this._elementPreFix = this._relationshipInfo.Name;
 			}
 
 			// If no category grouping, then only one flexbox is needed
@@ -84,6 +87,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			}
 
 			let saveQuery: ComponentFramework.WebApi.Entity = await this._getViewFetchXML();
+
 			let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await context.webAPI.retrieveMultipleRecords(saveQuery.returnedtypecode, "?fetchXml=" + encodeURIComponent(saveQuery.fetchxml));
 
 			if (this._useCustomRelationship)
@@ -111,21 +115,26 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		//Check if fetchXML has changed, then reset the display data
-		if (this._useCustomRelationship && context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)) {
-			if (context.parameters.customIntersectDisplayEntityFetchXML.raw === this._customIntersectDisplayEntityFetchXML) return;
+		if (context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)
+			&& context.parameters.fetchXmlData.raw !== this._customIntersectDisplayEntityFetchXML) {
 
-			this._customIntersectDisplayEntityFetchXML = context.parameters.customIntersectDisplayEntityFetchXML.raw
+			this._customIntersectDisplayEntityFetchXML = context.parameters.fetchXmlData.raw
 
 			try {
+				let saveQuery = await this._getViewFetchXML();
 				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await context.webAPI.retrieveMultipleRecords(
-					this._customRelationshipDefinitionChild.ReferencedEntity,
-					"?fetchXml=" + encodeURIComponent(this._customIntersectDisplayEntityFetchXML)
+					saveQuery.returnedtypecode,
+					"?fetchXml=" + encodeURIComponent(saveQuery.fetchxml)
 				);
 
 				// reset the control display								
 				this._divFlexBox.innerHTML = "";
-
-				this._displayViewRecordsCustom(result);
+				if (this._useCustomRelationship) {
+					this._displayViewRecordsCustom(result);
+				}
+				else {
+					this._displayViewRecordsDefault(result);
+				}
 
 			} catch (error) {
 				this._showAlertMessage(error.message);
@@ -133,12 +142,12 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		// Enable checkbox after reset.
-		if (this._changedCheckboxes.length) {
-			this._changedCheckboxes.forEach(chx => {
-				chx.disabled = false;
-			});
+		if (this._checkboxRecords && this._checkboxRecords.length > 0) {
+			for (let index = 0; index < this._checkboxRecords.length; index++) {
+				(<HTMLInputElement>this._checkboxRecords[index]).disabled = false;
+			}
 
-			this._changedCheckboxes.length = 0;
+			this._checkboxRecords = null;
 		}
 
 		let dataSet = context.parameters.nnRelationshipDataSet;
@@ -172,7 +181,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				matchId = lookupValue ? lookupValue.id : null;
 			}
 
-			let chk = matchId ? <HTMLInputElement>window.document.getElementById(matchId) : null;
+			let elementId = matchId ? `${matchId}|${this._elementPreFix}` : null;
+			let chk = elementId ? <HTMLInputElement>window.document.getElementById(elementId) : null;
 
 			if (chk) {
 				chk.checked = true;
@@ -207,7 +217,6 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	private async _getRelationshipDefinitionByName(schemaName: string): Promise<any> {
 		//@ts-ignore
 		let requestUrl = `${this._context.page.getClientUrl()}/api/data/v9.1/RelationshipDefinitions(SchemaName='${schemaName}')`;
-		console.log("SCHEMA " + requestUrl);
 		let result: any = {};
 		let request = new XMLHttpRequest();
 		// Return it as a Promise
@@ -236,31 +245,35 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			request.send();
 		});
 	}
-	private async _getViewFetchXML(): Promise<ComponentFramework.WebApi.Entity> {
-		let saveQuery: ComponentFramework.WebApi.Entity | null;
 
-		if (this._useCustomRelationship) {
-			if (this._context.parameters.customIntersectDisplayEntityFetchXML.raw) {
-				saveQuery = {
-					"returnedtypecode": this._customRelationshipDefinitionChild.ReferencedEntity,
-					"fetchxml": this._context.parameters.customIntersectDisplayEntityFetchXML.raw
-				};
-			}
-			else {
+	private async _getViewFetchXML(): Promise<ComponentFramework.WebApi.Entity> {
+		var saveQuery: ComponentFramework.WebApi.Entity | null = null;;
+
+		if (this._context.parameters.fetchXmlData && this._context.parameters.fetchXmlData.raw) {
+			let targetDisplayEntity = this._useCustomRelationship ?
+				this._customRelationshipDefinitionChild.ReferencedEntity : this._parentRecordType === this._relationshipInfo.Entity1LogicalName ?
+					this._relationshipInfo.Entity2LogicalName : this._relationshipInfo.Entity1LogicalName;
+			saveQuery = {
+				"fetchxml": this._context.parameters.fetchXmlData.raw,
+				"returnedtypecode": targetDisplayEntity
+			};
+		}
+
+		if (saveQuery === null) {
+			if (this._useCustomRelationship) {
 				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectDisplayEntityView.raw}'`;
 				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await this._context.webAPI.retrieveMultipleRecords(Constant.SaveQuery, queryOption);
 				saveQuery = result.entities && result.entities.length > 0 ? result.entities[0] : null;
+			} else {
+				saveQuery = await this._context.webAPI.retrieveRecord(Constant.SaveQuery, this._context.parameters.nnRelationshipDataSet.getViewId(), "?$select=fetchxml,returnedtypecode");
 			}
-		} else {
-			saveQuery = await this._context.webAPI.retrieveRecord(Constant.SaveQuery, this._context.parameters.nnRelationshipDataSet.getViewId(), "?$select=fetchxml,returnedtypecode");
 		}
 
 		if (saveQuery !== null && saveQuery.fetchxml) {
-			this._customIntersectDisplayEntityFetchXML = saveQuery.fetchxml;
 			return Promise.resolve(saveQuery);
 		}
 		else {
-			let viewNotFound = this._context.resources.getString(Constant.ViewNotFound);
+			let viewNotFound = this._context.resources.getString(Constant.InvalidParameters);
 			return Promise.reject(new Error(viewNotFound));
 		}
 	}
@@ -350,8 +363,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 			var chk = document.createElement("input");
 			chk.setAttribute("type", "checkbox");
-			chk.setAttribute("id", record[this._childRecordType + "id"]);
-			chk.setAttribute("value", record[this._childRecordType + "id"]);
+			chk.setAttribute("id", record[`${this._childRecordType}id`] + `|${this._elementPreFix}`);
+			chk.setAttribute("value", record[`${this._childRecordType}id`] + `|${this._elementPreFix}`);
 			chk.addEventListener("change", this._onCheckboxChange.bind(this));
 
 			if (this._context.mode.isControlDisabled) {
@@ -408,8 +421,9 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 			let chk = document.createElement("input");
 			chk.setAttribute("type", "checkbox");
-			chk.setAttribute("id", record[this._customRelationshipDefinitionChild.ReferencedEntity + "id"]);
-			chk.setAttribute("value", record[this._customRelationshipDefinitionChild.ReferencedEntity + "id"]);
+			chk.setAttribute("id", record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`);
+			chk.setAttribute("value", record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`);
+			chk.setAttribute("class", this._elementPreFix);
 			chk.addEventListener("change", this._onCheckboxChangeCustom.bind(this));
 
 			if (this._context.mode.isControlDisabled) {
@@ -445,7 +459,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let record2Id: string;
 		if (this._relationshipInfo.Entity1AttributeName === this._childRecordType) {
 			entity1name = this._childRecordType;
-			record1Id = currentTarget.id;
+			record1Id = currentTarget.id.split('|')[0];
 			entity2name = this._parentRecordType;
 			record2Id = this._parentRecordId;
 		}
@@ -453,7 +467,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			entity1name = this._parentRecordType;
 			record1Id = this._parentRecordId;
 			entity2name = this._childRecordType;
-			record2Id = currentTarget.id;
+			record2Id = currentTarget.id.split('|')[0];
 		}
 
 		let thisCtrl: any = this;
@@ -545,14 +559,17 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let currentTarget = <HTMLInputElement>event.currentTarget;
 		currentTarget.disabled = true;
 
-		if (!this._changedCheckboxes.find(chx => chx.id === currentTarget.id)) {
-			this._changedCheckboxes.push(currentTarget);
+		this._checkboxRecords = document.getElementsByClassName(this._elementPreFix);
+		if (this._checkboxRecords.length > 0) {
+			for (let index = 0; index < this._checkboxRecords.length; index++) {
+				(<HTMLInputElement>this._checkboxRecords[index]).disabled = true;
+			}
 		}
 
 		try {
 			if (currentTarget.checked) {
 				var newRecord: any = {};
-				newRecord[`${this._customRelationshipDefinitionChild.ReferencingAttribute}@odata.bind`] = `/${this._customRelationshipDefinitionChild.ReferencedEntity}s(${currentTarget.id})`;
+				newRecord[`${this._customRelationshipDefinitionChild.ReferencingAttribute}@odata.bind`] = `/${this._customRelationshipDefinitionChild.ReferencedEntity}s(${currentTarget.id.split('|')[0]})`;
 				newRecord[`${this._customRelationshipDefinitionCurrent.ReferencingAttribute}@odata.bind`] = `/${this._customRelationshipDefinitionCurrent.ReferencingEntity}s(${this._parentRecordId})`;
 
 				let newRecordId = await this._context.webAPI.createRecord(this._customRelationshipDefinitionChild.ReferencingEntity, newRecord);
@@ -589,6 +606,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let mode: any = this._context.mode;
 		this._parentRecordId = mode.contextInfo.entityId;
 		this._parentRecordType = mode.contextInfo.entityTypeName;
+		this._customIntersectDisplayEntityFetchXML = this._context.parameters.fetchXmlData && this._context.parameters.fetchXmlData.raw ?
+			this._context.parameters.fetchXmlData.raw : null;
 
 		for (var i = 0; i < this._context.parameters.nnRelationshipDataSet.columns.length; i++) {
 			var column = this._context.parameters.nnRelationshipDataSet.columns[i];
@@ -766,8 +785,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		this._hasValidDataSource = (
-			this._context.parameters.customIntersectDisplayEntityFetchXML
-			&& this._context.parameters.customIntersectDisplayEntityFetchXML.raw)
+			this._context.parameters.fetchXmlData
+			&& this._context.parameters.fetchXmlData.raw)
 			|| (this._context.parameters.customIntersectDisplayEntityView
 				&& this._context.parameters.customIntersectDisplayEntityView.raw)
 			? true : false;

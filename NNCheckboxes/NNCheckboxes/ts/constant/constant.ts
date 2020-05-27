@@ -6,7 +6,7 @@ export class Constant {
     public static SaveQuery = "savedquery";
     public static IntersectData = "data-intersect-id";
     public static DatasetName = "nnRelationshipDataSet";
-    public static CustomIntersectDisplayEntityFetchXML = "customIntersectDisplayEntityFetchXML";
+    public static CustomIntersectDisplayEntityFetchXML = "fetchXmlData";
     public static NncbMain = "nncb-main";
     public static ControlCSS = "NNCheckboxes.css";
 
