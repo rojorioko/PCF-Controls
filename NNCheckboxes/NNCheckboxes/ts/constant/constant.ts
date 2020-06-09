@@ -9,6 +9,10 @@ export class Constant {
     public static CustomIntersectDisplayEntityFetchXML = "fetchXmlData";
     public static NncbMain = "nncb-main";
     public static ControlCSS = "NNCheckboxes.css";
+    public static OptionSet = "OptionSet";
+    public static StatusCode = "statuscode";
+    public static LookupSimple = "Lookup.Simple";
+    public static TwoOptions = "TwoOptions";
 
     //#region Class Names
     public static NncbFlex = "nncb-flex";
@@ -18,5 +22,9 @@ export class Constant {
     public static ViewNotFound = "View_Not_Found";
     public static RecordNotFound = "Record_Not_Found";
     public static InvalidParameters = "Invalid_Parameter";
+    public static NoCategory = "No_Category";
+    public static NoRelationshipFound = "No_Relationship_Found";
+    public static MultipleRelationshipFound = "Multiple_Relationships_Found";
+
     //#endregion
 };

@@ -80,10 +80,22 @@
     <value>Schema name of the relationship displayed (case is important). Only required if multiple many-to-many relationships exist for both entities</value>
   </data>
    <data name="useCustomIntersect_Display_Key" xml:space="preserve">
-    <value>Use Intersect Entity</value>
+    <value>Use intersect entity on checkbox control</value>
   </data>
   <data name="useCustomIntersect_Desc_Key" xml:space="preserve">
-    <value>Select true if your Many to Many relationship came from an Intersect Entity</value>
+    <value>Select Yes if your Many to Many relationship came from an Intersect Entity</value>
+  </data>
+  <data name="useCustomIntersect_Yes_Display_Key" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="useCustomIntersect_Yes_Desc_Key" xml:space="preserve">
+    <value>Use custom intersect entity for checkbox control</value>
+  </data>
+  <data name="useCustomIntersect_No_Display_Key" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="useCustomIntersect_No_Desc_Key" xml:space="preserve">
+    <value>Use default relationship for checkbox control</value>
   </data>
   <data name="customIntersectDisplayEntityRelationship_Display_Key" xml:space="preserve">
     <value>Relationship Schema Name</value>
@@ -184,16 +196,16 @@
   <data name="No_Category" xml:space="preserve">
     <value>Uncategorized records</value>
   </data>
-  <data name="useToggleSwitchTrue" xml:space="preserve">
+  <data name="useToggleSwitch_Yes_Display_Key" xml:space="preserve">
     <value>Switch</value>
   </data>  
-  <data name="useToggleSwitchTrue_Desc" xml:space="preserve">
+  <data name="useToggleSwitch_Yes_Desc_Key" xml:space="preserve">
     <value>Display selector as switches</value>
   </data>
-  <data name="useToggleSwitchFalse" xml:space="preserve">
+  <data name="useToggleSwitch_No_Display_Key" xml:space="preserve">
     <value>Check boxes</value>
   </data>  
-  <data name="useToggleSwitchFalse_Desc" xml:space="preserve">
+  <data name="useToggleSwitch_No_Desc_Key" xml:space="preserve">
     <value>Display selector as check boxes</value>
   </data>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />

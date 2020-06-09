@@ -139,16 +139,16 @@
   <data name="No_Category" xml:space="preserve">
     <value>Enregistrements non catégorisés</value>
   </data>
-  <data name="useToggleSwitchTrue" xml:space="preserve">
+  <data name="useToggleSwitch_Yes_Display_Key" xml:space="preserve">
     <value>Interrupteur</value>
   </data>  
-  <data name="useToggleSwitchTrue_Desc" xml:space="preserve">
+  <data name="useToggleSwitch_Yes_Desc_Key" xml:space="preserve">
     <value>Affiche les sélecteurs en tant qu'interrupteur</value>
   </data>
-  <data name="useToggleSwitchFalse" xml:space="preserve">
+  <data name="useToggleSwitch_No_Display_Key" xml:space="preserve">
     <value>Cases à cocher</value>
   </data>  
-  <data name="useToggleSwitchFalse_Desc" xml:space="preserve">
+  <data name="useToggleSwitch_No_Desc_Key" xml:space="preserve">
     <value>Affiche les sélecteurs en tant que cases à cocher</value>
   </data>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />

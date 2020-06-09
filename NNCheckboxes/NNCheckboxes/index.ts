@@ -56,7 +56,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		this._container = document.createElement("div");
 		this._container.setAttribute("class", Constant.NncbMain);
 		container.appendChild(this._container);
-		this._useCustomRelationship = (context.parameters.useCustomIntersect && context.parameters.useCustomIntersect.raw.toLowerCase() === 'true') ? true : false;
+		this._useCustomRelationship = (context.parameters.useCustomIntersect?.raw?.toLowerCase() === 'true');
 
 		if (this._parametersAreNotValid()) {
 			this._showAlertMessage(this._context.resources.getString(Constant.InvalidParameters));
@@ -67,19 +67,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			this._setToggleDefaultBackgroud();
 			this._extractDataSetParameters();
 
-			if (this._useCustomRelationship) {
-				this._customRelationshipDefinitionChild = await this._getRelationshipDefinitionByName(this._context.parameters.customIntersectDisplayEntityRelationship.raw);
-				this._customRelationshipDefinitionCurrent = await this._getRelationshipDefinitionByName(this._context.parameters.relationshipSchemaName.raw);
-				this._elementPreFix = this._customRelationshipDefinitionCurrent.SchemaName;
-			}
-			else {
-				await this._setRelationshipInformation();
-				this._elementPreFix = this._relationshipInfo.Name;
-			}
-
-			// If no category grouping, then only one flexbox is needed
-			if (!this._categoryAttributeName || this._useCustomRelationship)
-				this._createMainContainer();
+			await this._setRelationshipDetails();
 
 			if (this._useCustomRelationship && !this._hasValidDataSource) {
 				this._showAlertMessage(this._context.resources.getString(Constant.InvalidParameters));
@@ -90,10 +78,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 			let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await context.webAPI.retrieveMultipleRecords(saveQuery.returnedtypecode, "?fetchXml=" + encodeURIComponent(saveQuery.fetchxml));
 
-			if (this._useCustomRelationship)
-				this._displayViewRecordsCustom(result)
-			else
-				this._displayViewRecordsDefault(result);
+			this._displayViewRecords(result, this._useCustomRelationship);
 		}
 		catch (error) {
 			this._showAlertMessage(error.message);
@@ -129,12 +114,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 				// reset the control display								
 				this._divFlexBox.innerHTML = "";
-				if (this._useCustomRelationship) {
-					this._displayViewRecordsCustom(result);
-				}
-				else {
-					this._displayViewRecordsDefault(result);
-				}
+				this._displayViewRecords(result, this._useCustomRelationship);
 
 			} catch (error) {
 				this._showAlertMessage(error.message);
@@ -153,7 +133,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		let dataSet = context.parameters.nnRelationshipDataSet;
 
 		// Check all records that are already associated to current record
-		for (var j = 0; j < dataSet.sortedRecordIds.length; j++) {
+		for (let j = 0; j < dataSet.sortedRecordIds.length; j++) {
 			let matchId: string | null = dataSet.sortedRecordIds[j];
 			if (this._useCustomRelationship) {
 				let records: IDataSetRecord[] = dataSet.sortedRecordIds.map(r => ({
@@ -176,6 +156,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 						return ikeyValue;
 					})
 				}));
+
 				let found = records.find(record => record.key === dataSet.sortedRecordIds[j] && record.values.find(data => data.key === this._customRelationshipDefinitionChild.ReferencingAttribute));
 				let lookupValue = found ? <ComponentFramework.EntityReference>found.values.find(fieldValue => fieldValue.key === this._customRelationshipDefinitionChild.ReferencingAttribute)!.value : undefined;
 				matchId = lookupValue ? lookupValue.id : null;
@@ -208,17 +189,44 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	}
 
 	//#region Private Functions
+
+	/**
+	 * Create main container for the control
+	 */
 	private _createMainContainer() {
 		this._divFlexBox = document.createElement("div");
 		this._divFlexBox.setAttribute("class", Constant.NncbFlex);
 		this._container.appendChild(this._divFlexBox);
 	}
 
+	/**
+	 * Set the relationship definition of the current and target entity
+	 */
+	private async _setRelationshipDetails() {
+		if (this._useCustomRelationship) {
+			this._customRelationshipDefinitionChild = await this._getRelationshipDefinitionByName(this._context.parameters.customIntersectDisplayEntityRelationship.raw);
+			this._customRelationshipDefinitionCurrent = await this._getRelationshipDefinitionByName(this._context.parameters.relationshipSchemaName.raw);
+			this._elementPreFix = this._customRelationshipDefinitionCurrent?.SchemaName;
+		}
+		else {
+			await this._setRelationshipInformation();
+			this._elementPreFix = this._relationshipInfo.Name;
+		}
+	}
+
+	/**
+	 * Get the relationship definition based on schema name. This will return Entities and Fields of both child and parent entity.
+	 * @param schemaName Schema Name of the relation
+	 */
 	private async _getRelationshipDefinitionByName(schemaName: string): Promise<any> {
+		//Why not use context and webapi feature for this?
+		//this._context.webAPI.retrieveMultipleRecords();
+
 		//@ts-ignore
 		let requestUrl = `${this._context.page.getClientUrl()}/api/data/v9.1/RelationshipDefinitions(SchemaName='${schemaName}')`;
 		let result: any = {};
 		let request = new XMLHttpRequest();
+
 		// Return it as a Promise
 		return new Promise(function (resolve, reject) {
 			// Setup our listener to process compeleted requests
@@ -246,10 +254,13 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		});
 	}
 
+	/**
+	 * Get the SaveQuery entity record. It contains the fetchxml data to be executed and it's target entity.
+	 */
 	private async _getViewFetchXML(): Promise<ComponentFramework.WebApi.Entity> {
-		var saveQuery: ComponentFramework.WebApi.Entity | null = null;;
+		let saveQuery: ComponentFramework.WebApi.Entity | null = null;;
 
-		if (this._context.parameters.fetchXmlData && this._context.parameters.fetchXmlData.raw) {
+		if (this._context.parameters.fetchXmlData?.raw) {
 			let targetDisplayEntity = this._useCustomRelationship ?
 				this._customRelationshipDefinitionChild.ReferencedEntity : this._parentRecordType === this._relationshipInfo.Entity1LogicalName ?
 					this._relationshipInfo.Entity2LogicalName : this._relationshipInfo.Entity1LogicalName;
@@ -261,7 +272,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 		if (saveQuery === null) {
 			if (this._useCustomRelationship) {
-				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectDisplayEntityView.raw}'`;
+				let queryOption: string = `?$select=fetchxml,returnedtypecode&$filter=name eq '${this._context.parameters.customIntersectDisplayEntityView?.raw}'`;
 				let result: ComponentFramework.WebApi.RetrieveMultipleResponse = await this._context.webAPI.retrieveMultipleRecords(Constant.SaveQuery, queryOption);
 				saveQuery = result.entities && result.entities.length > 0 ? result.entities[0] : null;
 			} else {
@@ -278,27 +289,32 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 	}
 
-	private _displayViewRecordsDefault(result: ComponentFramework.WebApi.RetrieveMultipleResponse) {
-		var category = "";
-		var divFlexCtrl = document.createElement("div");
+	/**
+	 * Display entity records as chexbox
+	 * @param result Entity collection to be displayed as checkbox
+	 * @param isCustomRelationship Identify whether to display Custom NN relationship or default
+	 */
+	private _displayViewRecords(result: ComponentFramework.WebApi.RetrieveMultipleResponse, isCustomRelationship: boolean) {
+		this._createMainContainer();
+		let category = "";
 
-		for (var i = 0; i < result.entities.length; i++) {
-			var record = result.entities[i];
+		for (let i = 0; i < result.entities.length; i++) {
+			let record = result.entities[i];
 
 			// If using category
-			if (this._categoryAttributeName) {
+			if (this._categoryAttributeName && !isCustomRelationship) {
 				// We need to display new category only if the category 
 				// is different from the previous one
 				if (category !== record[this._categoryAttributeName]) {
 					category = record[this._categoryAttributeName];
 
-					let label = record[this._categoryAttributeName + (this._categoryUseDisplayName ? "@OData.Community.Display.V1.FormattedValue" : "")];
+					let label = record[`${this._categoryAttributeName + (this._categoryUseDisplayName ? "@OData.Community.Display.V1.FormattedValue" : "")}`];
 					if (!label) {
-						label = this._context.resources.getString("No_Category");
+						label = this._context.resources.getString(Constant.NoCategory);
 					}
 
 					// Add the category
-					var categoryDiv = document.createElement("div");
+					let categoryDiv = document.createElement("div");
 					categoryDiv.setAttribute("style", "margin-bottom: 10px;border-bottom: solid 1px #828181;padding-bottom: 5px;");
 					categoryDiv.innerHTML = label;
 
@@ -311,98 +327,41 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				}
 			}
 
-			// Add flex content
-			divFlexCtrl = document.createElement("div");
-			divFlexCtrl.setAttribute("style", "flex: 0 " + (100 / this._numberOfColumns) + "% !important");
+			// Add flex content	
+			let divFlexCtrl = document.createElement("div");
+			divFlexCtrl.setAttribute("style", `flex: 0 ${(100 / this._numberOfColumns)}% !important`);
 			this._divFlexBox.appendChild(divFlexCtrl);
 
 			// With style if configured with colors
-			var styles = new Array();
-			if (this._backgroundColorAttributeName) {
-				if (this._backgroundColorIsFromOptionSet) {
-					if (this._colors
-						&& this._colors[this._backgroundColorAttributeName]
-						&& this._colors[this._backgroundColorAttributeName][record[this._backgroundColorAttributeName]]) {
-						var color = this._colors[this._backgroundColorAttributeName][record[this._backgroundColorAttributeName]];
-						styles.push("background-color:" + color);
+			let styles = new Array();
+			if (!isCustomRelationship) {
+				if (this._backgroundColorAttributeName) {
+					if (this._backgroundColorIsFromOptionSet) {
+						if (this._colors
+							&& this._colors[this._backgroundColorAttributeName]
+							&& this._colors[this._backgroundColorAttributeName][record[this._backgroundColorAttributeName]]) {
+							let color = this._colors[this._backgroundColorAttributeName][record[this._backgroundColorAttributeName]];
+							styles.push(`background-color:${color}`);
+						}
+					}
+					else {
+						styles.push(`background-color: ${record[this._backgroundColorAttributeName]}`);
 					}
 				}
-				else {
-					styles.push("background-color:" + record[this._backgroundColorAttributeName]);
-				}
-			}
-			if (this._foreColorAttributeName) {
-				if (this._foreColorIsFromOptionSet) {
-					if (this._colors
-						&& this._colors[this._foreColorAttributeName]
-						&& this._colors[this._foreColorAttributeName][record[this._backgroundColorAttributeName]]) {
-						var color = this._colors[this._foreColorAttributeName][record[this._backgroundColorAttributeName]];
-						styles.push("color:" + color);
+				if (this._foreColorAttributeName) {
+					if (this._foreColorIsFromOptionSet) {
+						if (this._colors
+							&& this._colors[this._foreColorAttributeName]
+							&& this._colors[this._foreColorAttributeName][record[this._backgroundColorAttributeName]]) {
+							let color = this._colors[this._foreColorAttributeName][record[this._backgroundColorAttributeName]];
+							styles.push(`color: ${color}`);
+						}
+					}
+					else {
+						styles.push(`color: ${record[this._foreColorAttributeName]}`);
 					}
 				}
-				else {
-					styles.push("color:" + record[this._foreColorAttributeName]);
-				}
 			}
-
-			var lblContainer = document.createElement("label");
-			divFlexCtrl.appendChild(lblContainer);
-
-			if (this._useToggleSwitch) {
-				lblContainer.setAttribute("class", "nncb-container-switch");
-
-				var spanLabel = document.createElement("span");
-				spanLabel.setAttribute("class", "nncb-switch-label");
-				spanLabel.textContent = record[this._labelAttributeName];
-				divFlexCtrl.appendChild(spanLabel);
-			}
-			else {
-				lblContainer.setAttribute("class", "nncb-container");
-				lblContainer.setAttribute("style", styles.join(";"))
-			}
-
-			var chk = document.createElement("input");
-			chk.setAttribute("type", "checkbox");
-			chk.setAttribute("id", record[`${this._childRecordType}id`] + `|${this._elementPreFix}`);
-			chk.setAttribute("value", record[`${this._childRecordType}id`] + `|${this._elementPreFix}`);
-			chk.addEventListener("change", this._onCheckboxChange.bind(this));
-
-			if (this._context.mode.isControlDisabled) {
-				chk.setAttribute("disabled", "disabled");
-			}
-
-			if (this._useToggleSwitch) {
-				var toggle = document.createElement("span");
-				toggle.setAttribute("class", "nncb-slider nncb-round");
-
-				if (styles.length > 0)
-					toggle.setAttribute("style", styles.join(";"))
-
-				lblContainer.appendChild(chk);
-				lblContainer.appendChild(toggle);
-			}
-			else {
-				var mark = document.createElement("span");
-				mark.setAttribute("class", "nncb-checkmark");
-
-				lblContainer.innerHTML += record[this._labelAttributeName];
-				lblContainer.appendChild(chk);
-				lblContainer.appendChild(mark);
-			}
-		}
-
-		this._context.parameters.nnRelationshipDataSet.paging.reset();
-		this._context.parameters.nnRelationshipDataSet.refresh();
-	}
-
-	private _displayViewRecordsCustom(result: ComponentFramework.WebApi.RetrieveMultipleResponse) {
-		for (var i = 0; i < result.entities.length; i++) {
-			let record = result.entities[i];
-
-			// Add flex content	
-			let divFlexCtrl = document.createElement("div");
-			divFlexCtrl.setAttribute("style", "flex: 0 " + (100 / this._numberOfColumns) + "% !important");
-			this._divFlexBox.appendChild(divFlexCtrl);
 
 			let lblContainer = document.createElement("label");
 			divFlexCtrl.appendChild(lblContainer);
@@ -417,28 +376,40 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			}
 			else {
 				lblContainer.setAttribute("class", "nncb-container");
+				lblContainer.setAttribute("style", styles.join(";"))
 			}
 
+			let inputId = isCustomRelationship ? record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`
+				: record[`${this._childRecordType}id`] + `|${this._elementPreFix}`;
+			let inputValue = isCustomRelationship ? record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`
+				: record[`${this._childRecordType}id`] + `|${this._elementPreFix}`;
+			let changeHandler = isCustomRelationship ? this._onCheckboxChangeCustom.bind(this) : this._onCheckboxChange.bind(this);
 			let chk = document.createElement("input");
-			chk.setAttribute("type", "checkbox");
-			chk.setAttribute("id", record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`);
-			chk.setAttribute("value", record[`${this._customRelationshipDefinitionChild.ReferencedEntity}id`] + `|${this._elementPreFix}`);
-			chk.setAttribute("class", this._elementPreFix);
-			chk.addEventListener("change", this._onCheckboxChangeCustom.bind(this));
 
-			if (this._context.mode.isControlDisabled) {
+			chk.setAttribute("type", "checkbox");
+			chk.setAttribute("id", inputId);
+			chk.setAttribute("value", inputValue);
+
+			if (isCustomRelationship)
+				chk.setAttribute("class", this._elementPreFix);
+
+			chk.addEventListener("change", changeHandler);
+
+			if (this._context.mode.isControlDisabled)
 				chk.setAttribute("disabled", "disabled");
-			}
 
 			if (this._useToggleSwitch) {
 				let toggle = document.createElement("span");
 				toggle.setAttribute("class", "nncb-slider nncb-round");
 
+				if (styles.length > 0)
+					toggle.setAttribute("style", styles.join(";"))
+
 				lblContainer.appendChild(chk);
 				lblContainer.appendChild(toggle);
 			}
 			else {
-				var mark = document.createElement("span");
+				let mark = document.createElement("span");
 				mark.setAttribute("class", "nncb-checkmark");
 
 				lblContainer.innerHTML += record[this._labelAttributeName];
@@ -451,7 +422,12 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		this._context.parameters.nnRelationshipDataSet.refresh();
 	}
 
-	private _onCheckboxChange(event: any) {
+	/**
+	 * Main handler for checkboxes with default NN relationship. 
+	 * It will associate selected record to current entity if checked and disassociate if unchecked.	 
+	 * @param event Default event parameter on checkbox
+	 */
+	private async _onCheckboxChange(event: any) {
 		let currentTarget = event.currentTarget;
 		let entity1name: string;
 		let entity2name: string;
@@ -471,8 +447,9 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		let thisCtrl: any = this;
+		let request: any;
 		if (currentTarget.checked) {
-			var associateRequest = new class {
+			request = new class {
 				target = {
 					id: record1Id,
 					entityType: entity1name
@@ -506,19 +483,9 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 					};
 				}
 			}();
-
-			thisCtrl._context.webAPI.execute(associateRequest)
-				.then(
-					null,
-					function () {
-						let message = thisCtrl._context.resources.getString("Error_Associate");
-						thisCtrl._showAlertMessage(message);
-					}
-				);
 		}
 		else {
-
-			var disassociateRequest = new class {
+			request = new class {
 				target = {
 					id: record1Id,
 					entityType: entity1name
@@ -543,18 +510,20 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 					};
 				}
 			}();
+		}
 
-			thisCtrl._context.webAPI.execute(disassociateRequest)
-				.then(
-					null,
-					function () {
-						let message = thisCtrl._context.resources.getString("Error_Disassociate");
-						thisCtrl._showAlertMessage(message);
-					}
-				);
+		try {
+			await thisCtrl._context.webAPI.execute(request);
+		} catch (error) {
+			this._showAlertMessage(error.message);
 		}
 	}
 
+	/**
+	 * Main handler for checkboxes with custom NN relationship. 
+	 * It will create record for intersect entity if checked and delete instance of intersect entity if unchecked.
+	 * @param event Default event parameter on checkbox
+	 */
 	private async _onCheckboxChangeCustom(event: any) {
 		let currentTarget = <HTMLInputElement>event.currentTarget;
 		currentTarget.disabled = true;
@@ -568,7 +537,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 		try {
 			if (currentTarget.checked) {
-				var newRecord: any = {};
+				let newRecord: any = {};
 				newRecord[`${this._customRelationshipDefinitionChild.ReferencingAttribute}@odata.bind`] = `/${this._customRelationshipDefinitionChild.ReferencedEntity}s(${currentTarget.id.split('|')[0]})`;
 				newRecord[`${this._customRelationshipDefinitionCurrent.ReferencingAttribute}@odata.bind`] = `/${this._customRelationshipDefinitionCurrent.ReferencingEntity}s(${this._parentRecordId})`;
 
@@ -596,28 +565,27 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 	}
 
+	/**
+	 * This will map the parameters from the form control to the appropriate attibutes or properties.
+	 */
 	private async _extractDataSetParameters(): Promise<void> {
-		this._useToggleSwitch = (this._context.parameters.useToggleSwitch
-			&& this._context.parameters.useToggleSwitch.raw
-			&& this._context.parameters.useToggleSwitch.raw.toLowerCase() === 'true')
-			? true : false;
+		this._useToggleSwitch = (this._context.parameters.useToggleSwitch?.raw?.toLowerCase() === 'true');
 		this._childRecordType = this._context.parameters.nnRelationshipDataSet.getTargetEntityType();
-		this._numberOfColumns = this._context.parameters.columnsNumber ? this._context.parameters.columnsNumber.raw : 1;
+		this._numberOfColumns = this._context.parameters.columnsNumber?.raw ?? 1;
 		let mode: any = this._context.mode;
 		this._parentRecordId = mode.contextInfo.entityId;
 		this._parentRecordType = mode.contextInfo.entityTypeName;
-		this._customIntersectDisplayEntityFetchXML = this._context.parameters.fetchXmlData && this._context.parameters.fetchXmlData.raw ?
-			this._context.parameters.fetchXmlData.raw : null;
+		this._customIntersectDisplayEntityFetchXML = this._context.parameters.fetchXmlData?.raw ?? null;
 
-		for (var i = 0; i < this._context.parameters.nnRelationshipDataSet.columns.length; i++) {
-			var column = this._context.parameters.nnRelationshipDataSet.columns[i];
+		for (let i = 0; i < this._context.parameters.nnRelationshipDataSet.columns.length; i++) {
+			let column = this._context.parameters.nnRelationshipDataSet.columns[i];
 			if (column.alias === Constant.DisplayName) {
 				this._labelAttributeName = column.name;
 			}
 			else if (column.alias === Constant.BackgoundColorAttribute) {
 				this._backgroundColorAttributeName = column.name;
 
-				if (column.dataType === "OptionSet" || column.dataType === "" && column.name === "statuscode") {
+				if (column.dataType === Constant.OptionSet || column.dataType === "" && column.name === Constant.StatusCode) {
 					if (!this._colors || !this._colors[column.name]) {
 						this._setOptionSetColors(column.name);
 					}
@@ -628,7 +596,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			else if (column.alias === Constant.ForeColorAttribute) {
 				this._foreColorAttributeName = column.name;
 
-				if (column.dataType === "OptionSet" || column.dataType === "" && column.name === "statuscode") {
+				if (column.dataType === Constant.OptionSet || column.dataType === "" && column.name === Constant.StatusCode) {
 					if (!this._colors || !this._colors[column.name]) {
 						this._setOptionSetColors(column.name);
 					}
@@ -638,14 +606,18 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			}
 			else if (column.alias === Constant.CategoryAttribute) {
 				this._categoryAttributeName = column.name;
-				this._categoryUseDisplayName = column.dataType === "Lookup.Simple" || column.dataType === "OptionSet" || column.dataType === "TwoOptions" || column.dataType === "" && column.name === "statuscode";
+				this._categoryUseDisplayName = column.dataType === Constant.LookupSimple || column.dataType === Constant.OptionSet || column.dataType === Constant.TwoOptions || column.dataType === "" && column.name === Constant.StatusCode;
 			}
 		}
 	}
 
+	/**
+	 * Retrieve the main CSS file of the Control
+	 * @returns Return the main CSS file.
+	 */
 	private _getStyleSheet() {
-		for (var i = 0; i < document.styleSheets.length; i++) {
-			var sheet = document.styleSheets[i];
+		for (let i = 0; i < document.styleSheets.length; i++) {
+			let sheet = document.styleSheets[i];
 			if (sheet.href && sheet.href.endsWith(Constant.ControlCSS)) {
 				return sheet;
 			}
@@ -653,13 +625,17 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		return null;
 	}
 
+	/**
+	 * Set the backbround and fore color based on the Optionset value color coding.
+	 * @param attribute Logical name of the optionset field.
+	 */
 	private _setOptionSetColors(attribute: string) {
 		let requestUrl =
 			"/api/data/v9.0/EntityDefinitions(LogicalName='"
 			+ this._childRecordType + "')/Attributes/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$select=LogicalName&$filter=LogicalName eq '"
 			+ attribute + "'&$expand=OptionSet";
 
-		var thisCtrl = this;
+		let thisCtrl = this;
 		let request = new XMLHttpRequest();
 		request.open("GET", requestUrl, true);
 		request.setRequestHeader("OData-MaxVersion", "4.0");
@@ -674,7 +650,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 					let options = entityMetadata.value[0].OptionSet.Options;
 					thisCtrl._colors = {};
 					thisCtrl._colors[attribute] = {}
-					for (var i = 0; i < options.length; i++) {
+					for (let i = 0; i < options.length; i++) {
 						thisCtrl._colors[attribute][options[i].Value] = options[i].Color;
 					}
 				} else {
@@ -683,15 +659,20 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 				}
 			}
 		};
+
 		request.send();
 	}
 
+	/**
+	 * Get NN relationship definition of the current entity and target entity.
+	 * If there are more than 1 NN relationship and the schema name of the relationship is not provided, the control will throw an error.
+	 */
 	private async _setRelationshipInformation(): Promise<void> {
 		let schemaNameParameter = this._context.parameters.relationshipSchemaName;
-		if (schemaNameParameter && schemaNameParameter.raw) {
-			let entityMetadata = await this._context.utils.getEntityMetadata(this._parentRecordType);
-			let nnRelationships = entityMetadata.ManyToManyRelationships.getAll();
+		let entityMetadata = await this._context.utils.getEntityMetadata(this._parentRecordType);
+		let nnRelationships = entityMetadata.ManyToManyRelationships.getAll();
 
+		if (schemaNameParameter?.raw) {
 			for (let i = 0; i < nnRelationships.length; i++) {
 				if (nnRelationships[i].IntersectEntityName.toLowerCase() === this._context.parameters.relationshipSchemaName.raw.toLowerCase()) {
 					this._relationshipInfo = {
@@ -702,18 +683,19 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 						Name: nnRelationships[i].SchemaName
 					};
 
+					break;
 				}
 			}
+
+			if (this._relationshipInfo) return;
 		}
 
-		let entityMetadata = await this._context.utils.getEntityMetadata(this._parentRecordType);
-		let nnRelationships = entityMetadata.ManyToManyRelationships.getAll();
 		let count = 0;
 		let foundSchemaName = "";
 
 		for (let i = 0; i < nnRelationships.length; i++) {
-			if ((nnRelationships[i].Entity1LogicalName == this._parentRecordType && nnRelationships[i].Entity2LogicalName == this._childRecordType) ||
-				(nnRelationships[i].Entity1LogicalName == this._childRecordType && nnRelationships[i].Entity2LogicalName == this._parentRecordType)) {
+			if ((nnRelationships[i].Entity1LogicalName === this._parentRecordType && nnRelationships[i].Entity2LogicalName === this._childRecordType) ||
+				(nnRelationships[i].Entity1LogicalName === this._childRecordType && nnRelationships[i].Entity2LogicalName === this._parentRecordType)) {
 				count++;
 				foundSchemaName = nnRelationships[i].SchemaName;
 
@@ -728,55 +710,55 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		if (foundSchemaName.length === 0) {
-			return Promise.reject(new Error(this._context.resources.getString("No_Relationship_Found")));
+			return Promise.reject(new Error(this._context.resources.getString(Constant.NoRelationshipFound)));
 		}
 		if (count > 1) {
-			return Promise.reject(new Error(this._context.resources.getString("Multiple_Relationships_Found")));
+			return Promise.reject(new Error(this._context.resources.getString(Constant.MultipleRelationshipFound)));
 		}
 	}
 
+	/**
+	 * Set background color of the Switch.
+	 * This is only applicable if the Toggle Switch is enabled instead of Checkbox.
+	 */
 	private _setToggleDefaultBackgroud() {
-		if (this._context.parameters.toggleDefaultBackgroundColorOn && this._context.parameters.toggleDefaultBackgroundColorOn.raw) {
-			let styleSheet: any = this._getStyleSheet();
+		let styleSheet: any = this._getStyleSheet();
+		if (!styleSheet) return;
 
-			if (styleSheet) {
-				let rules = styleSheet.rules;
-				for (let i = 0; i < rules.length; i++) {
-					let rule = rules[i];
-					if (rule.selectorText === "input:checked + .nncb-slider") {
-						styleSheet.deleteRule(i);
-						styleSheet.insertRule("input:checked + .nncb-slider { background-color: " + this._context.parameters.toggleDefaultBackgroundColorOn.raw + ";}", rule.index)
-					}
+		let rules = styleSheet.rules;
+
+		if (this._context.parameters.toggleDefaultBackgroundColorOn?.raw) {
+			for (let i = 0; i < rules.length; i++) {
+				let rule = rules[i];
+				if (rule.selectorText === "input:checked + .nncb-slider") {
+					styleSheet.deleteRule(i);
+					styleSheet.insertRule(`input:checked + .nncb-slider { background-color: ${this._context.parameters.toggleDefaultBackgroundColorOn.raw};}`, rule.index)
 				}
 			}
 		}
 
-		if (this._context.parameters.toggleDefaultBackgroundColorOff && this._context.parameters.toggleDefaultBackgroundColorOff.raw) {
-			let styleSheet: any = this._getStyleSheet();
-
-			if (styleSheet) {
-				let rules = styleSheet.rules;
-				for (let i = 0; i < rules.length; i++) {
-					let rule = rules[i];
-					if (rule.selectorText === ".nncb-slider") {
-						styleSheet.deleteRule(i);
-						styleSheet.insertRule(".nncb-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: " + this._context.parameters.toggleDefaultBackgroundColorOff.raw + "; -webkit-transition: .4s; transition: .4s;", rule.index)
-					}
+		if (this._context.parameters.toggleDefaultBackgroundColorOff?.raw) {
+			for (let i = 0; i < rules.length; i++) {
+				let rule = rules[i];
+				if (rule.selectorText === ".nncb-slider") {
+					styleSheet.deleteRule(i);
+					styleSheet.insertRule(`.nncb-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${this._context.parameters.toggleDefaultBackgroundColorOff.raw}; -webkit-transition: .4s; transition: .4s;`, rule.index);
 				}
 			}
 		}
 	}
 
+	/**
+	 * Validate the form parameters.
+	 * @returns True if all parameters are valid, otherwise, returns false.
+	 */
 	private _parametersAreNotValid(): boolean {
 		let isInputValid: boolean = true;
 
 		if (this._useCustomRelationship) {
-			isInputValid = this._context.parameters.customIntersectDisplayEntityDisplayAttibute
-				&& this._context.parameters.customIntersectDisplayEntityDisplayAttibute.raw
-				&& this._context.parameters.customIntersectDisplayEntityRelationship
-				&& this._context.parameters.customIntersectDisplayEntityRelationship.raw
-				&& this._context.parameters.relationshipSchemaName
-				&& this._context.parameters.relationshipSchemaName.raw
+			isInputValid = this._context.parameters.customIntersectDisplayEntityDisplayAttibute?.raw
+				&& this._context.parameters.customIntersectDisplayEntityRelationship?.raw
+				&& this._context.parameters.relationshipSchemaName?.raw
 				? true : false;
 		}
 		else {
@@ -784,18 +766,20 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			isInputValid = displayNameDataSetParam ? true : false;
 		}
 
-		this._hasValidDataSource = (
-			this._context.parameters.fetchXmlData
-			&& this._context.parameters.fetchXmlData.raw)
-			|| (this._context.parameters.customIntersectDisplayEntityView
-				&& this._context.parameters.customIntersectDisplayEntityView.raw)
+		this._hasValidDataSource = this._context.parameters.fetchXmlData?.raw
+			|| this._context.parameters.customIntersectDisplayEntityView?.raw
 			? true : false;
 
 		return !isInputValid;
 	}
 
+	/**
+	 * Main handler of the messages needed to be shown to the user.
+	 * @param message Message to display on the Form
+	 */
 	private _showAlertMessage(message: string): void {
 		this._context.navigation.openAlertDialog({ text: message });
 	}
+
 	//#endregion
 }
