@@ -51,7 +51,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	 * @param container If a control is marked control-type='starndard', it will receive an empty div element within which it can render its content.
 	 */
 	public async init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement) {
-		// Add control initialization code
+		// Add control initialization code		
 		this._context = context;
 		this._container = document.createElement("div");
 		this._container.setAttribute("class", Constant.NncbMain);
@@ -91,8 +91,11 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 	 * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
 	 */
 	public async updateView(context: ComponentFramework.Context<IInputs>) {
-		if (!context.updatedProperties.includes(Constant.DatasetName) && !context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML))
+		if (!context.updatedProperties.includes(Constant.DatasetName)
+			&& !context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)
+			&& !context.updatedProperties.includes(Constant.IsControlDisabled)) {
 			return;
+		}
 
 		if (context.parameters.nnRelationshipDataSet.paging.hasNextPage) {
 			context.parameters.nnRelationshipDataSet.paging.loadNextPage();
@@ -100,9 +103,9 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		}
 
 		//Check if fetchXML has changed, then reset the display data
-		if (context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)
-			&& context.parameters.fetchXmlData.raw !== this._customIntersectDisplayEntityFetchXML) {
-
+		if ((context.updatedProperties.includes(Constant.CustomIntersectDisplayEntityFetchXML)
+			&& context.parameters.fetchXmlData.raw !== this._customIntersectDisplayEntityFetchXML)
+			|| context.updatedProperties.includes(Constant.IsControlDisabled)) {
 			this._customIntersectDisplayEntityFetchXML = context.parameters.fetchXmlData.raw
 
 			try {
@@ -397,6 +400,8 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 
 			if (this._context.mode.isControlDisabled)
 				chk.setAttribute("disabled", "disabled");
+			else
+				chk.removeAttribute("disabled");
 
 			if (this._useToggleSwitch) {
 				let toggle = document.createElement("span");
@@ -515,6 +520,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 		try {
 			await thisCtrl._context.webAPI.execute(request);
 		} catch (error) {
+			currentTarget.checked = !currentTarget.checked;
 			this._showAlertMessage(error.message);
 		}
 	}
@@ -557,6 +563,7 @@ export class ListCheckboxes implements ComponentFramework.StandardControl<IInput
 			}
 		}
 		catch (error) {
+			currentTarget.checked = !currentTarget.checked;
 			this._showAlertMessage(error.message);
 		}
 		finally {

@@ -13,6 +13,7 @@ export class Constant {
     public static StatusCode = "statuscode";
     public static LookupSimple = "Lookup.Simple";
     public static TwoOptions = "TwoOptions";
+    public static IsControlDisabled = "IsControlDisabled";
 
     //#region Class Names
     public static NncbFlex = "nncb-flex";
